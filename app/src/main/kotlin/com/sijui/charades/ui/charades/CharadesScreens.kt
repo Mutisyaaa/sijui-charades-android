@@ -13,6 +13,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,19 +59,26 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.sijui.charades.R
 import com.sijui.charades.data.SijuiApiClient
 import com.sijui.charades.data.model.CharadesDeck
 import com.sijui.charades.hardware.ForeheadModeEffect
+import com.sijui.charades.hardware.ImageCodec
 import com.sijui.charades.hardware.TiltAction
 import com.sijui.charades.hardware.TiltDetector
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.sijui.charades.ui.design.AnimatedCounter
 import com.sijui.charades.ui.design.AuroraBackground
 import com.sijui.charades.ui.design.BigCountdown
@@ -261,7 +270,19 @@ private fun DeckTile(
     val colors = deckGradient(deck.theme)
     val shape = RoundedCornerShape(28.dp)
     val phase = remember(deck.id) { ((deck.id.hashCode() and 0x7fffffff) % 100) / 100f }
-    val coverUrl = remember(deck.coverUrl) { api.resolveImageUrl(deck.coverUrl) }
+    val rawCover = deck.coverUrl
+    val resolvedUrl = remember(rawCover) {
+        if (!rawCover.isNullOrBlank() && !rawCover.startsWith("data:")) api.resolveImageUrl(rawCover) else null
+    }
+    val decodedCover by produceState<ImageBitmap?>(initialValue = null, key1 = rawCover) {
+        value = if (!rawCover.isNullOrBlank() && rawCover.startsWith("data:")) {
+            withContext(Dispatchers.Default) {
+                ImageCodec.decodeDataUrl(rawCover)?.asImageBitmap()
+            }
+        } else {
+            null
+        }
+    }
 
     KenyaBeamBorder(
         cornerRadius = 28.dp,
@@ -277,25 +298,31 @@ private fun DeckTile(
                 .fillMaxSize()
                 .background(Brush.linearGradient(colors, Offset.Zero, Offset.Infinite)),
         ) {
-            if (!coverUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = deck.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.18f),
-                                    Color.Black.copy(alpha = 0.72f),
-                                ),
-                            ),
-                        ),
-                )
+            when {
+                decodedCover != null -> {
+                    Image(
+                        bitmap = decodedCover!!,
+                        contentDescription = deck.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                !resolvedUrl.isNullOrBlank() -> {
+                    AsyncImage(
+                        model = resolvedUrl,
+                        contentDescription = deck.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                deck.id == "everything-mix" -> {
+                    Image(
+                        painter = painterResource(R.drawable.everything_deck),
+                        contentDescription = deck.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             val longestWord = remember(deck.name) {
@@ -312,8 +339,8 @@ private fun DeckTile(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.35f),
+                                Color.Black.copy(alpha = 0.12f),
+                                Color.Black.copy(alpha = 0.78f),
                             ),
                         ),
                     ),
