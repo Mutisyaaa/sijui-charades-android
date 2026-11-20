@@ -248,12 +248,11 @@ private fun DeckPickerScreen(
                 }
             }
 
-            itemsIndexed(state.decks, key = { _, d -> d.id }) { index, deck ->
+            itemsIndexed(state.decks, key = { _, d -> d.id }) { _, deck ->
                 DeckTile(
                     deck = deck,
                     api = api,
                     onClick = { onSelectDeck(deck) },
-                    modifier = Modifier.staggerIn(index + 1),
                 )
             }
         }
@@ -670,11 +669,10 @@ private fun SummaryScreen(
 
             if (state.roundResults.isNotEmpty()) {
                 item { SectionLabel("Maneno ya round hii  •  This round", modifier = Modifier.padding(top = 6.dp)) }
-                itemsIndexed(state.roundResults) { i, item ->
+                itemsIndexed(state.roundResults) { _, item ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .staggerIn(3 + i.coerceAtMost(8))
                             .clip(RoundedCornerShape(18.dp))
                             .background(Sj.Glass)
                             .border(1.dp, Sj.GlassBorder, RoundedCornerShape(18.dp))
