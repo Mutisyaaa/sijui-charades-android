@@ -1,5 +1,7 @@
 package com.sijui.charades.ui.home
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -56,12 +58,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sijui.charades.R
+import com.sijui.charades.data.AppUpdateInfo
 import com.sijui.charades.data.SijuiApiClient
 import com.sijui.charades.ui.design.AuroraBackground
 import com.sijui.charades.ui.design.FloatingEmoji
@@ -86,15 +90,25 @@ fun HomeScreen(
     onOpenCharades: () -> Unit,
     onOpenNani: () -> Unit,
 ) {
+    val context = LocalContext.current
     var serverOnline by remember { mutableStateOf<Boolean?>(null) }
+    var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var showServerDialog by remember { mutableStateOf(false) }
     var showHowTo by remember { mutableStateOf(false) }
     var urlInput by remember { mutableStateOf(api.baseUrl) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
+    val bestScore = remember(refreshTrigger) { api.bestScore }
 
     LaunchedEffect(refreshTrigger) {
         serverOnline = null
         serverOnline = api.pingHealth()
+    }
+
+    LaunchedEffect(Unit) {
+        val currentVersion = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "1.0.0"
+        availableUpdate = api.checkForAppUpdate(currentVersion)
     }
 
     AuroraBackground {
@@ -153,12 +167,60 @@ fun HomeScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(14.dp))
-                ShukaStrip(
-                    modifier = Modifier
-                        .width(176.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    height = 11.dp,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ShukaStrip(
+                        modifier = Modifier
+                            .width(156.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        height = 11.dp,
+                    )
+                    if (bestScore > 0) {
+                        SjPill(
+                            text = "🏆 Best: $bestScore",
+                            background = Sj.Gold.copy(alpha = 0.22f),
+                            contentColor = Sj.Gold,
+                        )
+                    }
+                }
+            }
+
+            availableUpdate?.let { update ->
+                Spacer(Modifier.height(18.dp))
+                GlassCard(
+                    corner = 20.dp,
+                    padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    tint = Sj.Savanna.copy(alpha = 0.18f),
+                    borderColor = Sj.Savanna.copy(alpha = 0.55f),
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "✨ Update ${update.latestVersion} available",
+                                color = Sj.TextHi,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 15.sp,
+                            )
+                            Text(
+                                "Tap to download the latest Sijui APK",
+                                color = Sj.TextMid,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        SjPill("Update", background = Sj.Savanna, contentColor = Sj.Night)
+                    }
+                }
             }
 
             Spacer(Modifier.height(30.dp))

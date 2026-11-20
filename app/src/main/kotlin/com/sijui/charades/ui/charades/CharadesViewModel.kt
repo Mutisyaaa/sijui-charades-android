@@ -44,6 +44,9 @@ data class CharadesUiState(
     val isOfflineFallback: Boolean = true,
     val mode: CharadesMode = CharadesMode.QUICK_PLAY,
     val roundSeconds: Int = 60,
+    val tiltEnabled: Boolean = true,
+    val bestScore: Int = 0,
+    val isNewHighScore: Boolean = false,
     val teamAName: String = "Team A",
     val teamBName: String = "Team B",
     val teamAScore: Int = 0,
@@ -79,15 +82,21 @@ class CharadesViewModel(
 
     init {
         val cached = api.loadCachedDecks()
-        if (cached.isNotEmpty()) {
-            _uiState.update {
-                it.copy(
-                    decks = DefaultDecks.withRandomMix(cached),
-                    isOfflineFallback = false,
-                )
-            }
+        _uiState.update {
+            it.copy(
+                tiltEnabled = api.tiltEnabled,
+                bestScore = api.bestScore,
+                decks = if (cached.isNotEmpty()) DefaultDecks.withRandomMix(cached) else it.decks,
+                isOfflineFallback = cached.isEmpty(),
+            )
         }
         refreshDecks()
+    }
+
+    fun toggleTiltEnabled() {
+        val next = !_uiState.value.tiltEnabled
+        api.tiltEnabled = next
+        _uiState.update { it.copy(tiltEnabled = next) }
     }
 
     fun refreshDecks() {
@@ -230,7 +239,8 @@ class CharadesViewModel(
         if (state.phase != CharadesPhase.PLAYING) return
 
         val score = state.roundScore
-        if (score >= 10) sound.playCelebration() else sound.playWahWahRoast()
+        val isNewBest = api.recordScoreIfBest(score)
+        if (score >= 10 || isNewBest) sound.playCelebration() else sound.playWahWahRoast()
 
         _uiState.update {
             if (it.mode == CharadesMode.TEAM_BATTLE) {
@@ -241,11 +251,15 @@ class CharadesViewModel(
                     teamAScore = newTeamA,
                     teamBScore = newTeamB,
                     completedTurns = it.completedTurns + 1,
+                    bestScore = api.bestScore,
+                    isNewHighScore = isNewBest,
                     flash = FlashFeedback.NONE,
                 )
             } else {
                 it.copy(
                     phase = CharadesPhase.SUMMARY,
+                    bestScore = api.bestScore,
+                    isNewHighScore = isNewBest,
                     flash = FlashFeedback.NONE,
                 )
             }

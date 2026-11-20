@@ -19,6 +19,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -31,13 +34,22 @@ import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
+data class AppUpdateInfo(
+    val latestVersion: String,
+    val downloadUrl: String,
+)
+
 class SijuiApiClient(context: Context) {
 
     companion object {
         const val DEFAULT_BASE_URL = "https://sijui-game.onrender.com"
+        const val GITHUB_LATEST_RELEASE_API =
+            "https://api.github.com/repos/Mutisyaaa/sijui-charades-android/releases/latest"
         private const val PREFS_NAME = "sijui_prefs"
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_SESSION_COOKIE = "session_cookie"
+        private const val KEY_BEST_SCORE = "best_score"
+        private const val KEY_TILT_ENABLED = "tilt_enabled"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
 
@@ -88,6 +100,63 @@ class SijuiApiClient(context: Context) {
             val cleaned = value.trim().trimEnd('/').ifBlank { DEFAULT_BASE_URL }
             prefs.edit().putString(KEY_BASE_URL, cleaned).apply()
         }
+
+    var bestScore: Int
+        get() = prefs.getInt(KEY_BEST_SCORE, 0)
+        private set(value) {
+            prefs.edit().putInt(KEY_BEST_SCORE, value).apply()
+        }
+
+    fun recordScoreIfBest(score: Int): Boolean {
+        if (score > bestScore) {
+            bestScore = score
+            return true
+        }
+        return false
+    }
+
+    var tiltEnabled: Boolean
+        get() = prefs.getBoolean(KEY_TILT_ENABLED, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_TILT_ENABLED, value).apply()
+        }
+
+    suspend fun checkForAppUpdate(currentVersionName: String): AppUpdateInfo? = withContext(Dispatchers.IO) {
+        runCatching {
+            val req = Request.Builder()
+                .url(GITHUB_LATEST_RELEASE_API)
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "SijuiCharadesAndroid/$currentVersionName")
+                .get()
+                .build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return@runCatching null
+                val obj = json.parseToJsonElement(res.body?.string().orEmpty()).jsonObject
+                val tag = obj["tag_name"]?.jsonPrimitive?.content?.trim().orEmpty()
+                if (tag.isBlank() || !isVersionNewer(tag, currentVersionName)) return@runCatching null
+                val assets = obj["assets"]?.jsonArray.orEmpty()
+                val apkUrl = assets.firstOrNull { el ->
+                    val name = el.jsonObject["name"]?.jsonPrimitive?.content.orEmpty()
+                    name.startsWith("sijui-charades") && name.endsWith(".apk")
+                }?.jsonObject?.get("browser_download_url")?.jsonPrimitive?.content
+                    ?: obj["html_url"]?.jsonPrimitive?.content
+                    ?: return@runCatching null
+                AppUpdateInfo(latestVersion = tag, downloadUrl = apkUrl)
+            }
+        }.getOrNull()
+    }
+
+    private fun isVersionNewer(remoteTag: String, localVersion: String): Boolean {
+        val r = remoteTag.trimStart('v', 'V').split('.').map { it.toIntOrNull() ?: 0 }
+        val l = localVersion.trimStart('v', 'V').split('.').map { it.toIntOrNull() ?: 0 }
+        val len = maxOf(r.size, l.size)
+        for (i in 0 until len) {
+            val rv = r.getOrElse(i) { 0 }
+            val lv = l.getOrElse(i) { 0 }
+            if (rv != lv) return rv > lv
+        }
+        return false
+    }
 
     fun resolveImageUrl(raw: String?): String? {
         if (raw.isNullOrBlank()) return null

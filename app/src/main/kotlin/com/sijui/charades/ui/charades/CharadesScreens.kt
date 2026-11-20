@@ -120,6 +120,7 @@ fun CharadesRootScreen(
             onRefresh = viewModel::refreshDecks,
             onModeChange = viewModel::setMode,
             onRoundSecondsChange = viewModel::setRoundSeconds,
+            onToggleTilt = viewModel::toggleTiltEnabled,
             onTeamNamesChange = viewModel::setTeamNames,
             onSelectDeck = viewModel::startDeck,
         )
@@ -150,6 +151,7 @@ private fun DeckPickerScreen(
     onRefresh: () -> Unit,
     onModeChange: (CharadesMode) -> Unit,
     onRoundSecondsChange: (Int) -> Unit,
+    onToggleTilt: () -> Unit,
     onTeamNamesChange: (String, String) -> Unit,
     onSelectDeck: (CharadesDeck) -> Unit,
 ) {
@@ -209,6 +211,13 @@ private fun DeckPickerScreen(
                                 onClick = { onRoundSecondsChange(sec) },
                             )
                         }
+                        Spacer(Modifier.weight(1f))
+                        SjPill(
+                            text = if (state.tiltEnabled) "Tilt + Tap" else "Tap Only",
+                            background = if (state.tiltEnabled) Sj.GlassStrong else Sj.Gold.copy(alpha = 0.25f),
+                            contentColor = if (state.tiltEnabled) Sj.TextHi else Sj.Gold,
+                            onClick = onToggleTilt,
+                        )
                     }
                     AnimatedVisibility(
                         visible = state.mode == CharadesMode.TEAM_BATTLE,
@@ -421,15 +430,19 @@ private fun ForeheadPlayScreen(
     ForeheadModeEffect(lockLandscape = true, keepScreenOn = true, immersive = true)
 
     val context = LocalContext.current
-    DisposableEffect(context) {
-        val detector = TiltDetector(context) { action ->
-            when (action) {
-                TiltAction.CORRECT -> onCorrect()
-                TiltAction.PASS -> onPass()
+    DisposableEffect(context, state.tiltEnabled) {
+        if (!state.tiltEnabled) {
+            onDispose { }
+        } else {
+            val detector = TiltDetector(context) { action ->
+                when (action) {
+                    TiltAction.CORRECT -> onCorrect()
+                    TiltAction.PASS -> onPass()
+                }
             }
+            detector.start()
+            onDispose { detector.stop() }
         }
-        detector.start()
-        onDispose { detector.stop() }
     }
 
     val base = deckGradient(state.selectedDeck?.theme)
@@ -650,6 +663,14 @@ private fun SummaryScreen(
                         }
                     }
                     Spacer(Modifier.height(18.dp))
+                    if (state.isNewHighScore) {
+                        SjPill(
+                            text = "🏆 NEW HIGH SCORE!",
+                            background = Sj.Gold,
+                            contentColor = Sj.Night,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     Text(
                         banter,
                         color = Sj.TextHi,
