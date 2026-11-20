@@ -78,13 +78,27 @@ class CharadesViewModel(
     private var flashJob: Job? = null
 
     init {
+        val cached = api.loadCachedDecks()
+        if (cached.isNotEmpty()) {
+            _uiState.update {
+                it.copy(
+                    decks = DefaultDecks.withRandomMix(cached),
+                    isOfflineFallback = false,
+                )
+            }
+        }
         refreshDecks()
     }
 
     fun refreshDecks() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingDecks = true) }
-            val remote = runCatching { api.fetchDecks() }.getOrNull()
+            var remote = runCatching { api.fetchDecks() }.getOrNull()
+            // Retry once if Render free tier was waking from cold start
+            if (remote.isNullOrEmpty()) {
+                delay(2500L)
+                remote = runCatching { api.fetchDecks() }.getOrNull()
+            }
             if (!remote.isNullOrEmpty()) {
                 _uiState.update {
                     it.copy(
@@ -94,11 +108,12 @@ class CharadesViewModel(
                     )
                 }
             } else {
+                val cached = api.loadCachedDecks()
                 _uiState.update {
                     it.copy(
-                        decks = DefaultDecks.withRandomMix(DefaultDecks.all),
+                        decks = DefaultDecks.withRandomMix(if (cached.isNotEmpty()) cached else DefaultDecks.all),
                         isLoadingDecks = false,
-                        isOfflineFallback = true,
+                        isOfflineFallback = cached.isEmpty(),
                     )
                 }
             }

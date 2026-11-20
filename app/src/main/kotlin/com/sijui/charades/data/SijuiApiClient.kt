@@ -41,8 +41,10 @@ class SijuiApiClient(context: Context) {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
 
+    private val appContext: Context = context.applicationContext
+
     private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     val json = Json {
         ignoreUnknownKeys = true
@@ -75,9 +77,9 @@ class SijuiApiClient(context: Context) {
 
     private val client: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(25, TimeUnit.SECONDS)
-        .writeTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     var baseUrl: String
@@ -136,8 +138,22 @@ class SijuiApiClient(context: Context) {
     // --- Classic Charades ---
     suspend fun fetchDecks(): List<CharadesDeck> {
         val body = execute(get("/api/decks"))
-        return json.decodeFromString(body)
+        val decks: List<CharadesDeck> = json.decodeFromString(body)
+        if (decks.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    java.io.File(appContext.filesDir, "cached_decks.json").writeText(body)
+                }
+            }
+        }
+        return decks
     }
+
+    fun loadCachedDecks(): List<CharadesDeck> = runCatching {
+        val file = java.io.File(appContext.filesDir, "cached_decks.json")
+        if (!file.exists()) return emptyList()
+        json.decodeFromString<List<CharadesDeck>>(file.readText())
+    }.getOrDefault(emptyList())
 
     // --- Nani Huyu? Multiplayer ---
     suspend fun fetchNaniDecks(): List<NaniDeck> {

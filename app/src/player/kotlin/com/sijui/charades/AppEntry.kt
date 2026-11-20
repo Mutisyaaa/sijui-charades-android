@@ -70,7 +70,10 @@ fun SijuiAppEntry() {
                     sound.soundEnabled = soundEnabled
                     if (soundEnabled) sound.playTick(urgent = false)
                 },
-                onOpenCharades = { destination = PlayerDestination.CHARADES },
+                onOpenCharades = {
+                    charadesVm.refreshDecks()
+                    destination = PlayerDestination.CHARADES
+                },
                 onOpenNani = {
                     naniVm.loadDecks()
                     destination = PlayerDestination.NANI
