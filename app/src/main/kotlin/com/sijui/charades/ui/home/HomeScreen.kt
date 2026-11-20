@@ -150,7 +150,7 @@ fun HomeScreen(
             // Hero wordmark
             Column(modifier = Modifier.staggerIn(1)) {
                 Text(
-                    text = "SIJUI",
+                    text = "SIJUI!",
                     style = TextStyle(
                         brush = Brush.linearGradient(listOf(Sj.Gold, Sj.Coral, Sj.Orchid)),
                         fontFamily = ManlineDisplayFont,
