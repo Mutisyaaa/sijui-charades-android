@@ -589,23 +589,28 @@ private fun ForeheadCardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(20.dp),
+                .padding(horizontal = 12.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 SjPill(card?.category ?: "Nani Huyu?", background = Sj.Gold, contentColor = Sj.Night)
                 Spacer(Modifier.weight(1f))
                 SjPill("$guessedCount/${room.players.size} done", modifier = Modifier.padding(end = 8.dp))
                 SjPill("✕", onClick = onLeave)
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(0.6f))
 
-            Box(contentAlignment = Alignment.Center) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.95f)
-                        .aspectRatio(1f)
+                        .fillMaxWidth()
+                        .aspectRatio(0.9f)
                         .graphicsLayer { alpha = g }
                         .background(
                             Brush.radialGradient(listOf(Sj.Gold.copy(alpha = 0.55f), Color.Transparent)),
@@ -616,25 +621,26 @@ private fun ForeheadCardScreen(
                     card = card,
                     api = api,
                     modifier = Modifier
-                        .fillMaxWidth(0.82f)
-                        .aspectRatio(1f)
-                        .shadow(30.dp, RoundedCornerShape(36.dp), ambientColor = Sj.Gold, spotColor = Sj.Gold)
-                        .clip(RoundedCornerShape(36.dp))
-                        .border(5.dp, Brush.linearGradient(SjGradients.Gold), RoundedCornerShape(36.dp))
+                        .fillMaxWidth(0.96f)
+                        .aspectRatio(0.86f)
+                        .shadow(30.dp, RoundedCornerShape(32.dp), ambientColor = Sj.Gold, spotColor = Sj.Gold)
+                        .clip(RoundedCornerShape(32.dp))
+                        .border(5.dp, Brush.linearGradient(SjGradients.Gold), RoundedCornerShape(32.dp))
                         .background(Sj.Night3),
                 )
             }
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 card?.name ?: "Mystery",
                 color = Sj.TextHi,
                 fontFamily = ManlineDisplayFont,
-                fontSize = 44.sp,
-                lineHeight = 46.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 42.sp,
+                lineHeight = 44.sp,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(0.6f))
 
             GradientButton(
                 text = "I guessed it!",
@@ -642,8 +648,10 @@ private fun ForeheadCardScreen(
                 colors = SjGradients.Win,
                 contentColor = Sj.Night,
                 onClick = onGuessed,
-                height = 68.dp,
-                modifier = Modifier.fillMaxWidth(),
+                height = 66.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp),
             )
         }
     }
@@ -681,7 +689,7 @@ private fun RevealedScreen(
                         card = me.card,
                         api = api,
                         modifier = Modifier
-                            .size(180.dp)
+                            .size(240.dp)
                             .clip(RoundedCornerShape(32.dp))
                             .border(4.dp, Sj.Savanna, RoundedCornerShape(32.dp))
                             .background(Sj.Night3),
