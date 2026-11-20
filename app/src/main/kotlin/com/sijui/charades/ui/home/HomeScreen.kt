@@ -22,12 +22,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -191,14 +198,16 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 MiniTile(
-                    emoji = "📖",
+                    icon = Icons.AutoMirrored.Rounded.MenuBook,
+                    iconTint = Sj.Gold,
                     title = "How to play",
                     subtitle = "Rules in 20 sec",
                     onClick = { showHowTo = true },
                     modifier = Modifier.weight(1f),
                 )
                 MiniTile(
-                    emoji = if (soundEnabled) "🔊" else "🔇",
+                    icon = if (soundEnabled) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+                    iconTint = if (soundEnabled) Sj.Savanna else Sj.TextLo,
                     title = if (soundEnabled) "Sound on" else "Muted",
                     subtitle = if (soundEnabled) "Effects & banter" else "Tap to unmute",
                     onClick = onToggleSound,
@@ -381,14 +390,20 @@ private fun GameModeCard(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(20.dp)
-                    .size(58.dp)
-                    .shadow(12.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(Sj.Night),
+                    .padding(18.dp)
+                    .size(54.dp)
+                    .shadow(14.dp, RoundedCornerShape(18.dp), ambientColor = Sj.Night, spotColor = Sj.Night)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Sj.Night.copy(alpha = 0.88f))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(18.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("▶", color = colors.first(), fontSize = 22.sp, modifier = Modifier.padding(start = 3.dp))
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = "Play $title",
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp),
+                )
             }
         }
     }
@@ -396,7 +411,8 @@ private fun GameModeCard(
 
 @Composable
 private fun MiniTile(
-    emoji: String,
+    icon: ImageVector,
+    iconTint: Color,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -412,10 +428,16 @@ private fun MiniTile(
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(15.dp))
-                .background(Sj.GlassStrong),
+                .background(iconTint.copy(alpha = 0.16f))
+                .border(1.dp, iconTint.copy(alpha = 0.35f), RoundedCornerShape(15.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(emoji, fontSize = 24.sp)
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp),
+            )
         }
         Spacer(Modifier.height(14.dp))
         Text(title, color = Sj.TextHi, fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)

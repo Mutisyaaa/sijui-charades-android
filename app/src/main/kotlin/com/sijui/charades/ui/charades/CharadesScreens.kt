@@ -42,6 +42,9 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -192,7 +195,12 @@ private fun DeckPickerScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("⏱", fontSize = 18.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.Timer,
+                            contentDescription = "Round timer",
+                            tint = Sj.TextMid,
+                            modifier = Modifier.size(20.dp),
+                        )
                         Spacer(Modifier.width(2.dp))
                         listOf(45, 60, 90).forEach { sec ->
                             SelectChip(

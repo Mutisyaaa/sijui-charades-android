@@ -45,10 +45,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -590,21 +594,29 @@ fun SegmentedToggle(
 
 @Composable
 fun GlassIconButton(
-    glyph: String,
+    icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
+    size: Dp = 44.dp,
+    tint: Color = Sj.TextHi,
 ) {
+    val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
             .size(size)
             .bounceClick(onClick = onClick)
-            .clip(CircleShape)
+            .clip(shape)
             .background(Sj.GlassStrong)
-            .border(1.dp, Sj.GlassBorder, CircleShape),
+            .border(1.dp, Sj.GlassBorder, shape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, color = Sj.TextHi, fontSize = 20.sp, fontWeight = FontWeight.Black)
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
@@ -622,7 +634,11 @@ fun ScreenHeader(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        GlassIconButton(glyph = "←", onClick = onBack)
+        GlassIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            onClick = onBack,
+        )
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             if (subtitle != null) {
