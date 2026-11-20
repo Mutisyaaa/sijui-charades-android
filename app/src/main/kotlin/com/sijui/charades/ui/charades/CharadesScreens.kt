@@ -399,8 +399,8 @@ private fun CountdownScreen(state: CharadesUiState, onCancel: () -> Unit) {
             subline = "Phone on your forehead, screen facing your friends",
             footer = {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SjPill("⬇️  Tilt down = Correct", background = Color.Black.copy(alpha = 0.22f), contentColor = Color.White)
-                    SjPill("⬆️  Tilt up = Pass", background = Color.Black.copy(alpha = 0.22f), contentColor = Color.White)
+                    SjPill("⬆️  Tilt up = Correct", background = Color.Black.copy(alpha = 0.22f), contentColor = Color.White)
+                    SjPill("⬇️  Tilt down = Pass", background = Color.Black.copy(alpha = 0.22f), contentColor = Color.White)
                 }
             },
         )

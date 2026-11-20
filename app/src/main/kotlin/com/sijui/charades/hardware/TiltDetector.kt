@@ -18,8 +18,8 @@ enum class TiltAction {
  *
  * When the phone is held vertically against the forehead facing friends:
  *  - z ~ 0: neutral
- *  - z < -6.0 m/s^2: tilted forward / down toward the floor -> CORRECT
- *  - z > +6.0 m/s^2: tilted backward / up toward the ceiling -> PASS
+ *  - z > +6.0 m/s^2: tilted backward / up toward the ceiling -> CORRECT
+ *  - z < -6.0 m/s^2: tilted forward / down toward the floor -> PASS
  *
  * Requires returning to the neutral zone (|z| < 3.2) plus a cooldown so one tilt
  * never double-triggers.
@@ -63,12 +63,12 @@ class TiltDetector(
         if (now - lastTriggerMs < 700L) return
 
         when {
-            z < -6.0f -> {
+            z > 6.0f -> {
                 armed = false
                 lastTriggerMs = now
                 onTilt(TiltAction.CORRECT)
             }
-            z > 6.0f -> {
+            z < -6.0f -> {
                 armed = false
                 lastTriggerMs = now
                 onTilt(TiltAction.PASS)

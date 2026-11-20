@@ -512,11 +512,23 @@ private fun HowToPlaySheet() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 22.dp)
             .padding(bottom = 32.dp),
     ) {
-        Text("How to play", fontFamily = ManlineDisplayFont, fontSize = 30.sp, color = Sj.TextHi)
-        Spacer(Modifier.height(18.dp))
+        Text("How to play", fontFamily = ManlineDisplayFont, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, color = Sj.TextHi)
+        Spacer(Modifier.height(14.dp))
+        Image(
+            painter = painterResource(R.drawable.tilt_tutorial),
+            contentDescription = "Tilt Up = +1 Correct, Tilt Down = Pass",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .border(1.5.dp, Sj.GlassBorder, RoundedCornerShape(22.dp)),
+        )
+        Spacer(Modifier.height(16.dp))
         HowToBlock(
             emoji = "🎭",
             title = "Charades",
@@ -524,7 +536,7 @@ private fun HowToPlaySheet() {
             steps = listOf(
                 "Pick a deck & hold the phone on your forehead, screen facing out.",
                 "Friends act, mime or describe the word — no saying it!",
-                "Tilt DOWN when you get it ✅  •  Tilt UP to pass ⏭️",
+                "Tilt UP when you get it ✅  •  Tilt DOWN to pass ⏭️",
                 "10+ points = celebration. Under 10 = you get roasted 😂",
             ),
         )
