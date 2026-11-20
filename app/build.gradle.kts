@@ -35,6 +35,18 @@ android {
     }
   }
 
+  flavorDimensions += "edition"
+  productFlavors {
+    create("player") {
+      dimension = "edition"
+      applicationId = "com.sijui.charades"
+    }
+    create("studio") {
+      dimension = "edition"
+      applicationId = "com.sijui.studio"
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = false

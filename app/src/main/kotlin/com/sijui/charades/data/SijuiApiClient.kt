@@ -266,6 +266,7 @@ class SijuiApiClient(context: Context) {
         description: String,
         icon: String,
         theme: String,
+        coverUrl: String? = null,
     ): CharadesDeck {
         val body = execute(
             post(
@@ -275,11 +276,16 @@ class SijuiApiClient(context: Context) {
                     put("description", description)
                     put("icon", icon)
                     put("theme", theme)
+                    if (!coverUrl.isNullOrBlank()) put("coverUrl", coverUrl)
                     put("isPublished", true)
                 },
             ),
         )
         return json.decodeFromString(body)
+    }
+
+    suspend fun deleteAdminDeck(deckId: String) {
+        execute(delete("/api/admin/decks/$deckId"))
     }
 
     suspend fun bulkAddCards(deckId: String, words: List<String>): Int {
