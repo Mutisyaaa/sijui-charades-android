@@ -120,7 +120,6 @@ fun CharadesRootScreen(
             onRefresh = viewModel::refreshDecks,
             onModeChange = viewModel::setMode,
             onRoundSecondsChange = viewModel::setRoundSeconds,
-            onToggleTilt = viewModel::toggleTiltEnabled,
             onTeamNamesChange = viewModel::setTeamNames,
             onSelectDeck = viewModel::startDeck,
         )
@@ -151,7 +150,6 @@ private fun DeckPickerScreen(
     onRefresh: () -> Unit,
     onModeChange: (CharadesMode) -> Unit,
     onRoundSecondsChange: (Int) -> Unit,
-    onToggleTilt: () -> Unit,
     onTeamNamesChange: (String, String) -> Unit,
     onSelectDeck: (CharadesDeck) -> Unit,
 ) {
@@ -211,13 +209,6 @@ private fun DeckPickerScreen(
                                 onClick = { onRoundSecondsChange(sec) },
                             )
                         }
-                        Spacer(Modifier.weight(1f))
-                        SjPill(
-                            text = if (state.tiltEnabled) "Tilt + Tap" else "Tap Only",
-                            background = if (state.tiltEnabled) Sj.GlassStrong else Sj.Gold.copy(alpha = 0.25f),
-                            contentColor = if (state.tiltEnabled) Sj.TextHi else Sj.Gold,
-                            onClick = onToggleTilt,
-                        )
                     }
                     AnimatedVisibility(
                         visible = state.mode == CharadesMode.TEAM_BATTLE,
@@ -430,19 +421,15 @@ private fun ForeheadPlayScreen(
     ForeheadModeEffect(lockLandscape = true, keepScreenOn = true, immersive = true)
 
     val context = LocalContext.current
-    DisposableEffect(context, state.tiltEnabled) {
-        if (!state.tiltEnabled) {
-            onDispose { }
-        } else {
-            val detector = TiltDetector(context) { action ->
-                when (action) {
-                    TiltAction.CORRECT -> onCorrect()
-                    TiltAction.PASS -> onPass()
-                }
+    DisposableEffect(context) {
+        val detector = TiltDetector(context) { action ->
+            when (action) {
+                TiltAction.CORRECT -> onCorrect()
+                TiltAction.PASS -> onPass()
             }
-            detector.start()
-            onDispose { detector.stop() }
         }
+        detector.start()
+        onDispose { detector.stop() }
     }
 
     val base = deckGradient(state.selectedDeck?.theme)
@@ -470,30 +457,6 @@ private fun ForeheadPlayScreen(
             .fillMaxSize()
             .background(Brush.linearGradient(listOf(top, bottom), Offset.Zero, Offset.Infinite)),
     ) {
-        // Tap fallback zones: left = pass, right = correct
-        Row(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onPass,
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onCorrect,
-                    ),
-            )
-        }
-
         // HUD
         Row(
             modifier = Modifier
@@ -571,26 +534,16 @@ private fun ForeheadPlayScreen(
             }
         }
 
-        // Edge hints
+        // Tilt-only hint at bottom
         Text(
-            "‹ PASS",
-            color = Color.White.copy(alpha = 0.45f),
+            "⬆️ TILT UP = CORRECT   •   ⬇️ TILT DOWN = PASS",
+            color = Color.White.copy(alpha = 0.5f),
             fontWeight = FontWeight.Black,
-            fontSize = 13.sp,
-            letterSpacing = 2.sp,
+            fontSize = 12.sp,
+            letterSpacing = 1.5.sp,
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 18.dp),
-        )
-        Text(
-            "GOT IT ›",
-            color = Color.White.copy(alpha = 0.45f),
-            fontWeight = FontWeight.Black,
-            fontSize = 13.sp,
-            letterSpacing = 2.sp,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 18.dp),
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
         )
     }
 }

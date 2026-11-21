@@ -44,7 +44,6 @@ data class CharadesUiState(
     val isOfflineFallback: Boolean = true,
     val mode: CharadesMode = CharadesMode.QUICK_PLAY,
     val roundSeconds: Int = 60,
-    val tiltEnabled: Boolean = true,
     val bestScore: Int = 0,
     val isNewHighScore: Boolean = false,
     val teamAName: String = "Team A",
@@ -84,19 +83,12 @@ class CharadesViewModel(
         val cached = api.loadCachedDecks()
         _uiState.update {
             it.copy(
-                tiltEnabled = api.tiltEnabled,
                 bestScore = api.bestScore,
                 decks = if (cached.isNotEmpty()) DefaultDecks.withRandomMix(cached) else it.decks,
                 isOfflineFallback = cached.isEmpty(),
             )
         }
         refreshDecks()
-    }
-
-    fun toggleTiltEnabled() {
-        val next = !_uiState.value.tiltEnabled
-        api.tiltEnabled = next
-        _uiState.update { it.copy(tiltEnabled = next) }
     }
 
     fun refreshDecks() {
