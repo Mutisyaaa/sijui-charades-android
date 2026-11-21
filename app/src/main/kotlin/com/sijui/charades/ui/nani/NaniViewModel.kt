@@ -140,6 +140,9 @@ class NaniViewModel(
                 .onSuccess { room ->
                     _uiState.update { it.copy(isLoading = false, room = room) }
                     handleRoomTransition(room)
+                    viewModelScope.launch {
+                        api.logGameEvent(eventType = "nani_round", deckName = room.deckName)
+                    }
                 }
                 .onFailure { err ->
                     _uiState.update { it.copy(isLoading = false, error = err.message ?: "Could not start round") }
@@ -172,6 +175,9 @@ class NaniViewModel(
                 .onSuccess { room ->
                     _uiState.update { it.copy(isLoading = false, room = room) }
                     handleRoomTransition(room)
+                    viewModelScope.launch {
+                        api.logGameEvent(eventType = "nani_round", deckName = room.deckName)
+                    }
                 }
                 .onFailure { err ->
                     _uiState.update { it.copy(isLoading = false, error = err.message) }

@@ -2,6 +2,7 @@ package com.sijui.charades.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.sijui.charades.data.model.AnalyticsSummary
 import com.sijui.charades.data.model.ApiErrorResponse
 import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.data.model.AuthResponse
@@ -225,6 +226,33 @@ class SijuiApiClient(context: Context) {
         val saved: AppConfig = json.decodeFromString(body)
         prefs.edit().putString(KEY_APP_CONFIG, body).apply()
         return saved
+    }
+
+    // --- Party Analytics ---
+    suspend fun logGameEvent(
+        eventType: String,
+        deckName: String? = null,
+        score: Int? = null,
+        mode: String? = null,
+    ) {
+        runCatching {
+            execute(
+                post(
+                    "/api/analytics/event",
+                    buildJsonObject {
+                        put("eventType", eventType)
+                        if (!deckName.isNullOrBlank()) put("deckName", deckName)
+                        if (score != null) put("score", score)
+                        if (!mode.isNullOrBlank()) put("mode", mode)
+                    },
+                ),
+            )
+        }
+    }
+
+    suspend fun fetchAdminAnalytics(): AnalyticsSummary {
+        val body = execute(get("/api/admin/analytics"))
+        return json.decodeFromString(body)
     }
 
     // --- Health ---

@@ -79,6 +79,7 @@ import com.sijui.charades.ui.design.ConfettiBurst
 import com.sijui.charades.ui.design.GhostButton
 import com.sijui.charades.ui.design.GlassCard
 import com.sijui.charades.ui.design.GradientButton
+import com.sijui.charades.ui.design.QrCodeBox
 import com.sijui.charades.ui.design.ScreenHeader
 import com.sijui.charades.ui.design.SectionLabel
 import com.sijui.charades.ui.design.SegmentedToggle
@@ -95,6 +96,7 @@ private val NaniAurora = listOf(Sj.Orchid, Sj.Lagoon, Sj.Ember)
 @Composable
 fun NaniRootScreen(
     viewModel: NaniViewModel,
+    initialJoinCode: String? = null,
     onExit: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -103,6 +105,7 @@ fun NaniRootScreen(
     if (room == null) {
         EntryScreen(
             state = state,
+            initialJoinCode = initialJoinCode,
             onBack = onExit,
             onRefreshDecks = viewModel::loadDecks,
             onSelectDeck = viewModel::selectDeck,
@@ -143,6 +146,7 @@ fun NaniRootScreen(
         else -> LobbyScreen(
             room = room,
             myPlayerId = state.playerId,
+            joinUrl = "${viewModel.api.baseUrl}/?nani=${room.code}",
             error = state.error,
             isLoading = state.isLoading,
             onStart = viewModel::startRound,
@@ -158,15 +162,16 @@ fun NaniRootScreen(
 @Composable
 private fun EntryScreen(
     state: NaniUiState,
+    initialJoinCode: String? = null,
     onBack: () -> Unit,
     onRefreshDecks: () -> Unit,
     onSelectDeck: (String) -> Unit,
     onCreateRoom: (String) -> Unit,
     onJoinRoom: (String, String) -> Unit,
 ) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember(initialJoinCode) { mutableIntStateOf(if (!initialJoinCode.isNullOrBlank()) 1 else 0) }
     var playerName by remember { mutableStateOf("") }
-    var joinCode by remember { mutableStateOf("") }
+    var joinCode by remember(initialJoinCode) { mutableStateOf(initialJoinCode.orEmpty().uppercase().take(6)) }
 
     AuroraBackground(colors = NaniAurora) {
         Column(
@@ -427,6 +432,7 @@ private fun CodeSlot(char: String, active: Boolean, modifier: Modifier = Modifie
 private fun LobbyScreen(
     room: NaniRoom,
     myPlayerId: String?,
+    joinUrl: String,
     error: String?,
     isLoading: Boolean,
     onStart: () -> Unit,
@@ -442,50 +448,55 @@ private fun LobbyScreen(
         ) {
             ScreenHeader(title = "Lobby", subtitle = room.deckName, onBack = onLeave)
 
-            // Room code hero
+            // Room code + Scannable QR Code hero
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .staggerIn(0),
-                corner = 30.dp,
-                padding = PaddingValues(20.dp),
+                corner = 28.dp,
+                padding = PaddingValues(16.dp),
             ) {
-                SectionLabel("Room code", modifier = Modifier.align(Alignment.CenterHorizontally))
-                Spacer(Modifier.height(12.dp))
                 Row(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    room.code.forEach { ch ->
-                        Box(
-                            modifier = Modifier
-                                .size(width = 60.dp, height = 72.dp)
-                                .shadow(12.dp, RoundedCornerShape(18.dp), ambientColor = Sj.Orchid, spotColor = Sj.Orchid)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(Brush.linearGradient(SjGradients.Violet, Offset.Zero, Offset.Infinite)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(ch.toString(), color = Color.White, fontFamily = ManlineDisplayFont, fontSize = 40.sp)
+                    QrCodeBox(data = joinUrl, size = 122.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        SectionLabel("Scan QR or enter code")
+                        Spacer(Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            room.code.forEach { ch ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(width = 38.dp, height = 48.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Brush.linearGradient(SjGradients.Violet, Offset.Zero, Offset.Infinite)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(ch.toString(), color = Color.White, fontFamily = ManlineDisplayFont, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
+                                }
+                            }
                         }
+                        Spacer(Modifier.height(10.dp))
+                        GhostButton(
+                            text = "Share invite",
+                            emoji = "💬",
+                            height = 42.dp,
+                            onClick = {
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "Tucheze Nani Huyu? 📸 Join my Sijui room with code ${room.code} or tap: $joinUrl",
+                                    )
+                                }
+                                context.startActivity(Intent.createChooser(send, "Invite friends"))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                GhostButton(
-                    text = "Invite on WhatsApp",
-                    emoji = "💬",
-                    height = 48.dp,
-                    onClick = {
-                        val send = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                "Tucheze Nani Huyu? 📸 Join my Sijui room with code ${room.code}!",
-                            )
-                        }
-                        context.startActivity(Intent.createChooser(send, "Invite friends"))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
 
             if (!error.isNullOrBlank()) {

@@ -21,6 +21,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,6 +75,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -963,6 +965,53 @@ fun BigCountdown(
                 )
             }
             footer()
+        }
+    }
+}
+
+/** Crisp white-framed scannable QR code rendered locally via ZXing. */
+@Composable
+fun QrCodeBox(
+    data: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 148.dp,
+) {
+    val qrBitmap = remember(data) {
+        runCatching {
+            val px = 420
+            val matrix = com.google.zxing.qrcode.QRCodeWriter().encode(
+                data,
+                com.google.zxing.BarcodeFormat.QR_CODE,
+                px,
+                px,
+                mapOf(com.google.zxing.EncodeHintType.MARGIN to 1),
+            )
+            val bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.RGB_565)
+            val dark = android.graphics.Color.parseColor("#0A0812")
+            val light = android.graphics.Color.WHITE
+            for (y in 0 until px) {
+                for (x in 0 until px) {
+                    bmp.setPixel(x, y, if (matrix.get(x, y)) dark else light)
+                }
+            }
+            bmp.asImageBitmap()
+        }.getOrNull()
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White)
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (qrBitmap != null) {
+            Image(
+                bitmap = qrBitmap,
+                contentDescription = "Scan QR to join room",
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

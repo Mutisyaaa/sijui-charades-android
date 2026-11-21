@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sijui.charades.data.SijuiApiClient
+import com.sijui.charades.data.model.AnalyticsSummary
 import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.data.model.AuthUser
 import com.sijui.charades.data.model.CharadesDeck
@@ -29,6 +30,7 @@ data class StudioUiState(
     val categories: List<NaniCategoryCount> = emptyList(),
     val characters: List<NaniCard> = emptyList(),
     val appConfig: AppConfig = AppConfig(),
+    val analytics: AnalyticsSummary = AnalyticsSummary(),
 )
 
 class StudioViewModel(
@@ -86,6 +88,7 @@ class StudioViewModel(
             val cats = runCatching { api.fetchNaniCategories() }.getOrDefault(emptyList())
             val chars = runCatching { api.fetchCustomNaniCharacters() }.getOrDefault(emptyList())
             val cfg = runCatching { api.fetchAppConfig() }.getOrDefault(api.loadCachedAppConfig())
+            val stats = runCatching { api.fetchAdminAnalytics() }.getOrDefault(AnalyticsSummary())
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -93,6 +96,7 @@ class StudioViewModel(
                     categories = cats,
                     characters = chars,
                     appConfig = cfg,
+                    analytics = stats,
                 )
             }
         }

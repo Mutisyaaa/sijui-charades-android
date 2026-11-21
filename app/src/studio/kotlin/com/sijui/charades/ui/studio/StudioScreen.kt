@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.sijui.charades.data.model.AnalyticsSummary
 import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.ui.design.parseHexColor
 import androidx.compose.ui.Alignment
@@ -249,13 +250,14 @@ fun StudioScreen(
 
             // Authenticated Studio Tabs
             SegmentedToggle(
-                options = listOf("🎭 Decks", "📸 Photos", "🎨 Theme"),
+                options = listOf("🎭 Decks", "📸 Photos", "🎨 Theme", "📊 Stats"),
                 selectedIndex = activeTab,
                 onSelect = { activeTab = it },
                 colors = when (activeTab) {
                     0 -> SjGradients.Sunset
                     1 -> SjGradients.Violet
-                    else -> SjGradients.Mint
+                    2 -> SjGradients.Mint
+                    else -> SjGradients.Lagoon
                 },
             )
 
@@ -474,11 +476,18 @@ fun StudioScreen(
                         }
                     }
                 }
-            } else {
+            } else if (activeTab == 2) {
                 ThemeStudioTab(
                     initialConfig = state.appConfig,
                     isLoading = state.isLoading,
                     onSave = viewModel::saveAppConfig,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                StatsStudioTab(
+                    stats = state.analytics,
+                    isLoading = state.isLoading,
+                    onRefresh = viewModel::loadStudioData,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -869,5 +878,168 @@ private fun ThemeStudioTab(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StatsStudioTab(
+    stats: AnalyticsSummary,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 28.dp),
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                SectionLabel("Live Party Analytics")
+                SjPill(
+                    text = if (isLoading) "Refreshing…" else "↻ Refresh",
+                    background = Sj.GlassStrong,
+                    onClick = onRefresh,
+                )
+            }
+        }
+
+        // Live Nani Huyu? rooms right now
+        item {
+            GlassCard(
+                corner = 26.dp,
+                tint = Sj.Savanna.copy(alpha = 0.14f),
+                borderColor = Sj.Savanna.copy(alpha = 0.45f),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("● LIVE RIGHT NOW", color = Sj.Savanna, fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.5.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "${stats.activeNaniRooms} Nani Rooms  •  ${stats.activeNaniPlayers} Players",
+                            color = Sj.TextHi,
+                            fontFamily = ManlineDisplayFont,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Round stats 2x2 grid
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricBox("🎭", "${stats.totalCharadesRounds}", "Charades Rounds", Modifier.weight(1f))
+                MetricBox("📸", "${stats.totalNaniRounds}", "Nani Rounds", Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricBox("🔥", "${stats.roundsToday}", "Last 24 Hours", Modifier.weight(1f))
+                MetricBox("🏆", "${stats.highestScore}", "Highest Score", Modifier.weight(1f))
+            }
+        }
+
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricBox("🎯", "${stats.avgScore}", "Avg Score", Modifier.weight(1f))
+                MetricBox("🃏", "${stats.totalDecks} / ${stats.totalCards}", "Decks / Cards", Modifier.weight(1f))
+            }
+        }
+
+        // Top played decks
+        item {
+            GlassCard(corner = 26.dp) {
+                Text(
+                    "🔥 Most Played Decks",
+                    color = Sj.TextHi,
+                    fontFamily = ManlineDisplayFont,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                if (stats.topDecks.isEmpty()) {
+                    Text(
+                        "No rounds logged yet — play a round of Sijui! to see your squad's favorite decks appear here.",
+                        color = Sj.TextMid,
+                        fontSize = 14.sp,
+                    )
+                } else {
+                    val maxPlays = stats.topDecks.maxOf { it.plays }.coerceAtLeast(1)
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        stats.topDecks.forEachIndexed { idx, deck ->
+                            val frac = (deck.plays.toFloat() / maxPlays.toFloat()).coerceIn(0.12f, 1f)
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        "#${idx + 1}  ${deck.name}",
+                                        color = Sj.TextHi,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 15.sp,
+                                    )
+                                    Text(
+                                        "${deck.plays} plays",
+                                        color = Sj.Gold,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                                Spacer(Modifier.height(5.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(99.dp))
+                                        .background(Sj.GlassStrong),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(frac)
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(99.dp))
+                                            .background(Brush.horizontalGradient(SjGradients.Sunset)),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricBox(emoji: String, value: String, label: String, modifier: Modifier = Modifier) {
+    GlassCard(modifier = modifier, corner = 22.dp, padding = PaddingValues(16.dp)) {
+        Text(emoji, fontSize = 22.sp)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            value,
+            color = Sj.TextHi,
+            fontFamily = ManlineDisplayFont,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 26.sp,
+        )
+        Text(
+            label.uppercase(),
+            color = Sj.TextLo,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 10.sp,
+            letterSpacing = 1.sp,
+        )
     }
 }

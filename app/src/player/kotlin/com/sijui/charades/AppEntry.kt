@@ -39,7 +39,16 @@ fun SijuiAppEntry() {
     val charadesVm = remember { CharadesViewModel(api, sound) }
     val naniVm = remember { NaniViewModel(api, sound) }
 
-    var destination by remember { mutableStateOf(PlayerDestination.HOME) }
+    val deepLinkRoomCode = remember {
+        val uri = (context as? android.app.Activity)?.intent?.data
+        val fromQuery = uri?.getQueryParameter("nani")
+        val fromPath = if (uri?.scheme == "sijui") uri.lastPathSegment else null
+        (fromQuery ?: fromPath)?.trim()?.uppercase()?.takeIf { it.length >= 4 }
+    }
+
+    var destination by remember {
+        mutableStateOf(if (deepLinkRoomCode != null) PlayerDestination.NANI else PlayerDestination.HOME)
+    }
     var soundEnabled by remember { mutableStateOf(sound.soundEnabled) }
     var appConfig by remember { mutableStateOf(api.loadCachedAppConfig()) }
 
@@ -99,6 +108,7 @@ fun SijuiAppEntry() {
                 )
                 PlayerDestination.NANI -> NaniRootScreen(
                     viewModel = naniVm,
+                    initialJoinCode = deepLinkRoomCode,
                     onExit = {
                         naniVm.leaveRoom()
                         destination = PlayerDestination.HOME

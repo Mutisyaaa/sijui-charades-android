@@ -134,3 +134,24 @@ data class AppConfig(
     val announcementBanner: String = "",
     val defaultRoundSeconds: Int = 60,
 )
+
+@Serializable
+data class TopDeckStat(
+    val name: String = "",
+    val plays: Int = 0,
+)
+
+@Serializable
+data class AnalyticsSummary(
+    val totalCharadesRounds: Int = 0,
+    val totalNaniRounds: Int = 0,
+    val roundsToday: Int = 0,
+    val avgScore: Double = 0.0,
+    val highestScore: Int = 0,
+    val activeNaniRooms: Int = 0,
+    val activeNaniPlayers: Int = 0,
+    val totalDecks: Int = 0,
+    val totalCards: Int = 0,
+    val totalPhotos: Int = 0,
+    val topDecks: List<TopDeckStat> = emptyList(),
+)

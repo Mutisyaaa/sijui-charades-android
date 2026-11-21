@@ -234,6 +234,15 @@ class CharadesViewModel(
         val isNewBest = api.recordScoreIfBest(score)
         if (score >= 10 || isNewBest) sound.playCelebration() else sound.playWahWahRoast()
 
+        viewModelScope.launch {
+            api.logGameEvent(
+                eventType = "charades_round",
+                deckName = state.selectedDeck?.name,
+                score = score,
+                mode = state.mode.name.lowercase(),
+            )
+        }
+
         _uiState.update {
             if (it.mode == CharadesMode.TEAM_BATTLE) {
                 val newTeamA = if (it.currentTeamIndex == 0) it.teamAScore + score else it.teamAScore

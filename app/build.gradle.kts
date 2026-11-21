@@ -85,10 +85,11 @@ dependencies {
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
-  // Networking, Serialization, Images
+  // Networking, Serialization, Images, QR
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.okhttp)
   implementation(libs.coil.compose)
+  implementation(libs.zxing.core)
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
