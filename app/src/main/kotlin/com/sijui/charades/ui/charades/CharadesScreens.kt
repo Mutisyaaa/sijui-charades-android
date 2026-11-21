@@ -90,6 +90,7 @@ import com.sijui.charades.ui.design.GhostButton
 import com.sijui.charades.ui.design.GlassCard
 import com.sijui.charades.ui.design.GradientButton
 import com.sijui.charades.ui.design.KenyaBeamBorder
+import com.sijui.charades.ui.design.LocalAppConfig
 import com.sijui.charades.ui.design.ScreenHeader
 import com.sijui.charades.ui.design.SectionLabel
 import com.sijui.charades.ui.design.SegmentedToggle
@@ -153,12 +154,14 @@ private fun DeckPickerScreen(
     onTeamNamesChange: (String, String) -> Unit,
     onSelectDeck: (CharadesDeck) -> Unit,
 ) {
+    val config = LocalAppConfig.current
+    val columns = config.deckColumns.coerceIn(1, 3)
     var teamA by remember { mutableStateOf(state.teamAName) }
     var teamB by remember { mutableStateOf(state.teamBName) }
 
-    AuroraBackground(colors = listOf(Sj.Coral, Sj.Gold, Sj.Orchid)) {
+    AuroraBackground {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Fixed(columns),
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding(),

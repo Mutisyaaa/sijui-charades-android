@@ -3,6 +3,7 @@ package com.sijui.charades.data
 import android.content.Context
 import android.content.SharedPreferences
 import com.sijui.charades.data.model.ApiErrorResponse
+import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.data.model.AuthResponse
 import com.sijui.charades.data.model.AuthUser
 import com.sijui.charades.data.model.BulkCardsResponse
@@ -50,6 +51,7 @@ class SijuiApiClient(context: Context) {
         private const val KEY_SESSION_COOKIE = "session_cookie"
         private const val KEY_BEST_SCORE = "best_score"
         private const val KEY_TILT_ENABLED = "tilt_enabled"
+        private const val KEY_APP_CONFIG = "cached_app_config"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
 
@@ -195,8 +197,35 @@ class SijuiApiClient(context: Context) {
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
+    private fun put(path: String, payload: String): Request =
+        Request.Builder()
+            .url("$baseUrl$path")
+            .put(payload.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+
     private fun delete(path: String): Request =
         Request.Builder().url("$baseUrl$path").delete().build()
+
+    // --- Live App Config ---
+    fun loadCachedAppConfig(): AppConfig = runCatching {
+        val raw = prefs.getString(KEY_APP_CONFIG, null) ?: return AppConfig()
+        json.decodeFromString<AppConfig>(raw)
+    }.getOrDefault(AppConfig())
+
+    suspend fun fetchAppConfig(): AppConfig {
+        val body = execute(get("/api/app-config"))
+        val config: AppConfig = json.decodeFromString(body)
+        prefs.edit().putString(KEY_APP_CONFIG, body).apply()
+        return config
+    }
+
+    suspend fun saveAdminAppConfig(config: AppConfig): AppConfig {
+        val encoded = json.encodeToString(AppConfig.serializer(), config)
+        val body = execute(put("/api/admin/app-config", encoded))
+        val saved: AppConfig = json.decodeFromString(body)
+        prefs.edit().putString(KEY_APP_CONFIG, body).apply()
+        return saved
+    }
 
     // --- Health ---
     suspend fun pingHealth(): Boolean = runCatching {

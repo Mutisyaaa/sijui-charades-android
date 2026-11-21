@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +84,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.ui.theme.ManlineDisplayFont
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -135,17 +137,36 @@ fun deckGradient(theme: String?): List<Color> = when (theme?.lowercase()) {
     else -> SjGradients.Violet
 }
 
+val LocalAppConfig = compositionLocalOf { AppConfig() }
+
+fun parseHexColor(hex: String?, fallback: Color): Color {
+    if (hex.isNullOrBlank()) return fallback
+    return runCatching {
+        Color(android.graphics.Color.parseColor(hex.trim()))
+    }.getOrDefault(fallback)
+}
+
 /* ============================================================
    Backgrounds & decoration
    ============================================================ */
 
-/** Deep night background with slowly drifting aurora glow blobs. */
+/** Deep night background with slowly drifting aurora glow blobs driven by live AppConfig. */
 @Composable
 fun AuroraBackground(
     modifier: Modifier = Modifier,
-    colors: List<Color> = listOf(Sj.Ember, Sj.Orchid, Sj.Lagoon),
+    colors: List<Color>? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val config = LocalAppConfig.current
+    val bgColor = remember(config.backgroundColor) { parseHexColor(config.backgroundColor, Sj.Night) }
+    val resolvedColors = colors ?: remember(config.auroraColor1, config.auroraColor2, config.auroraColor3) {
+        listOf(
+            parseHexColor(config.auroraColor1, Sj.Ember),
+            parseHexColor(config.auroraColor2, Sj.Orchid),
+            parseHexColor(config.auroraColor3, Sj.Lagoon),
+        )
+    }
+
     val transition = rememberInfiniteTransition(label = "aurora")
     val phase by transition.animateFloat(
         initialValue = 0f,
@@ -153,14 +174,14 @@ fun AuroraBackground(
         animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Restart),
         label = "aurora_phase",
     )
-    val c0 = colors.getOrElse(0) { Sj.Ember }
-    val c1 = colors.getOrElse(1) { Sj.Orchid }
-    val c2 = colors.getOrElse(2) { Sj.Lagoon }
+    val c0 = resolvedColors.getOrElse(0) { Sj.Ember }
+    val c1 = resolvedColors.getOrElse(1) { Sj.Orchid }
+    val c2 = resolvedColors.getOrElse(2) { Sj.Lagoon }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Sj.Night)
+            .background(bgColor)
             .drawBehind {
                 val w = size.width
                 val h = size.height
@@ -261,8 +282,19 @@ fun KenyaBeamBorder(
         label = "kenya_beam_angle",
     )
 
+    val config = LocalAppConfig.current
     val outerShape = RoundedCornerShape(cornerRadius)
     val innerShape = RoundedCornerShape((cornerRadius - borderWidth).coerceAtLeast(8.dp))
+
+    if (!config.showKenyaBeam) {
+        Box(
+            modifier = modifier
+                .clip(outerShape)
+                .border(1.5.dp, Sj.GlassBorder, outerShape),
+            content = content,
+        )
+        return
+    }
 
     val beamBrush = remember {
         Brush.sweepGradient(

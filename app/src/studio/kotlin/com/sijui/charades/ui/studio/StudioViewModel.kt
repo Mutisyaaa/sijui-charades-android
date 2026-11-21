@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sijui.charades.data.SijuiApiClient
+import com.sijui.charades.data.model.AppConfig
 import com.sijui.charades.data.model.AuthUser
 import com.sijui.charades.data.model.CharadesDeck
 import com.sijui.charades.data.model.NaniCard
@@ -27,6 +28,7 @@ data class StudioUiState(
     val decks: List<CharadesDeck> = emptyList(),
     val categories: List<NaniCategoryCount> = emptyList(),
     val characters: List<NaniCard> = emptyList(),
+    val appConfig: AppConfig = AppConfig(),
 )
 
 class StudioViewModel(
@@ -83,14 +85,37 @@ class StudioViewModel(
             val decks = runCatching { api.fetchAdminDecks() }.getOrDefault(emptyList())
             val cats = runCatching { api.fetchNaniCategories() }.getOrDefault(emptyList())
             val chars = runCatching { api.fetchCustomNaniCharacters() }.getOrDefault(emptyList())
+            val cfg = runCatching { api.fetchAppConfig() }.getOrDefault(api.loadCachedAppConfig())
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     decks = decks,
                     categories = cats,
                     characters = chars,
+                    appConfig = cfg,
                 )
             }
+        }
+    }
+
+    fun saveAppConfig(config: AppConfig) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, statusMessage = null) }
+            runCatching { api.saveAdminAppConfig(config) }
+                .onSuccess { saved ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            appConfig = saved,
+                            statusMessage = "Live theme & layout pushed to all players! 🎨",
+                        )
+                    }
+                }
+                .onFailure { err ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = err.message ?: "Failed to save app config")
+                    }
+                }
         }
     }
 

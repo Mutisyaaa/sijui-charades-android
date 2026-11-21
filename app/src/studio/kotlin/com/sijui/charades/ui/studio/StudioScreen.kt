@@ -27,9 +27,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,6 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.sijui.charades.data.model.AppConfig
+import com.sijui.charades.ui.design.parseHexColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -245,10 +249,14 @@ fun StudioScreen(
 
             // Authenticated Studio Tabs
             SegmentedToggle(
-                options = listOf("🎭 Decks (${state.decks.size})", "📸 Photos (${state.characters.size})"),
+                options = listOf("🎭 Decks", "📸 Photos", "🎨 Theme"),
                 selectedIndex = activeTab,
                 onSelect = { activeTab = it },
-                colors = if (activeTab == 0) SjGradients.Sunset else SjGradients.Violet,
+                colors = when (activeTab) {
+                    0 -> SjGradients.Sunset
+                    1 -> SjGradients.Violet
+                    else -> SjGradients.Mint
+                },
             )
 
             Spacer(Modifier.height(14.dp))
@@ -346,7 +354,7 @@ fun StudioScreen(
                         )
                     }
                 }
-            } else {
+            } else if (activeTab == 1) {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -466,6 +474,13 @@ fun StudioScreen(
                         }
                     }
                 }
+            } else {
+                ThemeStudioTab(
+                    initialConfig = state.appConfig,
+                    isLoading = state.isLoading,
+                    onSave = viewModel::saveAppConfig,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -607,5 +622,252 @@ private fun BannerBox(emoji: String, text: String, color: Color) {
         Text(emoji, fontSize = 16.sp)
         Spacer(Modifier.width(10.dp))
         Text(text, color = Sj.TextHi, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    }
+}
+
+private data class ThemePreset(
+    val id: String,
+    val label: String,
+    val bg: String,
+    val a1: String,
+    val a2: String,
+    val a3: String,
+    val accent: String,
+)
+
+private val STUDIO_PRESETS = listOf(
+    ThemePreset("nairobi_nights", "Nairobi Nights", "#0A0812", "#FF4D3D", "#B45CFF", "#3D7BFF", "#FFC23D"),
+    ThemePreset("savanna_emerald", "Savanna Green", "#071410", "#1ED77A", "#0E8F6E", "#FFC23D", "#2EE6A8"),
+    ThemePreset("rift_sunset", "Rift Sunset", "#16090B", "#FF5E3A", "#FFC23D", "#C9184A", "#FFB81C"),
+    ThemePreset("shuka_crimson", "Shuka Red", "#14070A", "#E5322D", "#1FA45B", "#FFC23D", "#FF6B6B"),
+    ThemePreset("lamu_ocean", "Lamu Ocean", "#07101E", "#2255D9", "#00C2FF", "#6A5BFF", "#4FA3FF"),
+)
+
+@Composable
+private fun ThemeStudioTab(
+    initialConfig: AppConfig,
+    isLoading: Boolean,
+    onSave: (AppConfig) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var draft by remember { mutableStateOf(initialConfig) }
+    LaunchedEffect(initialConfig) { draft = initialConfig }
+
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 28.dp),
+    ) {
+        item {
+            GlassCard(corner = 26.dp) {
+                Text(
+                    "Theme Presets",
+                    color = Sj.TextHi,
+                    fontFamily = ManlineDisplayFont,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                )
+                Spacer(Modifier.height(10.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(STUDIO_PRESETS, key = { it.id }) { preset ->
+                        SelectChip(
+                            text = preset.label,
+                            selected = draft.themePreset == preset.id,
+                            colors = listOf(
+                                parseHexColor(preset.accent, Sj.Gold),
+                                parseHexColor(preset.a1, Sj.Coral),
+                            ),
+                            onClick = {
+                                draft = draft.copy(
+                                    themePreset = preset.id,
+                                    backgroundColor = preset.bg,
+                                    auroraColor1 = preset.a1,
+                                    auroraColor2 = preset.a2,
+                                    auroraColor3 = preset.a3,
+                                    accentColor = preset.accent,
+                                )
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                // Mini live color preview strip
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(parseHexColor(draft.backgroundColor, Sj.Night))
+                        .border(1.5.dp, Sj.GlassBorder, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(draft.backgroundColor, draft.accentColor, draft.auroraColor1, draft.auroraColor2, draft.auroraColor3).forEach { hex ->
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(CircleShape)
+                                .background(parseHexColor(hex, Sj.Gold))
+                                .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape),
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text("Live Preview", color = Sj.TextMid, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = draft.backgroundColor,
+                        onValueChange = { draft = draft.copy(themePreset = "custom", backgroundColor = it.take(7)) },
+                        label = { Text("Bg Hex") },
+                        singleLine = true,
+                        colors = sjTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = draft.accentColor,
+                        onValueChange = { draft = draft.copy(themePreset = "custom", accentColor = it.take(7)) },
+                        label = { Text("Accent Hex") },
+                        singleLine = true,
+                        colors = sjTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = draft.auroraColor1,
+                        onValueChange = { draft = draft.copy(themePreset = "custom", auroraColor1 = it.take(7)) },
+                        label = { Text("Glow 1") },
+                        singleLine = true,
+                        colors = sjTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = draft.auroraColor2,
+                        onValueChange = { draft = draft.copy(themePreset = "custom", auroraColor2 = it.take(7)) },
+                        label = { Text("Glow 2") },
+                        singleLine = true,
+                        colors = sjTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        item {
+            GlassCard(corner = 26.dp) {
+                Text(
+                    "Layout & Visual Effects",
+                    color = Sj.TextHi,
+                    fontFamily = ManlineDisplayFont,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                SectionLabel("Charades deck columns")
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1 to "1 Col (Wide)", 2 to "2 Col", 3 to "3 Col").forEach { (cols, label) ->
+                        SelectChip(
+                            text = label,
+                            selected = draft.deckColumns == cols,
+                            onClick = { draft = draft.copy(deckColumns = cols) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                SectionLabel("Default round timer")
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(45, 60, 90).forEach { sec ->
+                        SelectChip(
+                            text = "${sec}s",
+                            selected = draft.defaultRoundSeconds == sec,
+                            onClick = { draft = draft.copy(defaultRoundSeconds = sec) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Kenya Flag rotating card beam", color = Sj.TextHi, fontWeight = FontWeight.Bold)
+                    Switch(
+                        checked = draft.showKenyaBeam,
+                        onCheckedChange = { draft = draft.copy(showKenyaBeam = it) },
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Maasai shuka strip on Home", color = Sj.TextHi, fontWeight = FontWeight.Bold)
+                    Switch(
+                        checked = draft.showShukaStrip,
+                        onCheckedChange = { draft = draft.copy(showShukaStrip = it) },
+                    )
+                }
+            }
+        }
+
+        item {
+            GlassCard(corner = 26.dp) {
+                Text(
+                    "Live Home Copy & Banner",
+                    color = Sj.TextHi,
+                    fontFamily = ManlineDisplayFont,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = draft.homeGreeting,
+                    onValueChange = { draft = draft.copy(homeGreeting = it) },
+                    label = { Text("Home greeting") },
+                    singleLine = true,
+                    colors = sjTextFieldColors(),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = draft.homeTagline,
+                    onValueChange = { draft = draft.copy(homeTagline = it) },
+                    label = { Text("Home tagline") },
+                    singleLine = true,
+                    colors = sjTextFieldColors(),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = draft.announcementBanner,
+                    onValueChange = { draft = draft.copy(announcementBanner = it) },
+                    label = { Text("Announcement banner (leave blank to hide)") },
+                    singleLine = true,
+                    colors = sjTextFieldColors(),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                GradientButton(
+                    text = if (isLoading) "Pushing live…" else "Save & push live",
+                    emoji = "🚀",
+                    colors = SjGradients.Win,
+                    enabled = !isLoading,
+                    onClick = { onSave(draft) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
     }
 }

@@ -117,3 +117,20 @@ data class ApiErrorResponse(
 data class BulkCardsResponse(
     val count: Int = 0,
 )
+
+@Serializable
+data class AppConfig(
+    val themePreset: String = "nairobi_nights",
+    val backgroundColor: String = "#0A0812",
+    val auroraColor1: String = "#FF4D3D",
+    val auroraColor2: String = "#B45CFF",
+    val auroraColor3: String = "#3D7BFF",
+    val accentColor: String = "#FFC23D",
+    val deckColumns: Int = 2,
+    val showKenyaBeam: Boolean = true,
+    val showShukaStrip: Boolean = true,
+    val homeGreeting: String = "Tucheze leo?",
+    val homeTagline: String = "The ultimate Kenyan party game.",
+    val announcementBanner: String = "",
+    val defaultRoundSeconds: Int = 60,
+)

@@ -71,12 +71,14 @@ import com.sijui.charades.ui.design.AuroraBackground
 import com.sijui.charades.ui.design.FloatingEmoji
 import com.sijui.charades.ui.design.GlassCard
 import com.sijui.charades.ui.design.KenyaBeamBorder
+import com.sijui.charades.ui.design.LocalAppConfig
 import com.sijui.charades.ui.design.SectionLabel
 import com.sijui.charades.ui.design.ShukaStrip
 import com.sijui.charades.ui.design.Sj
 import com.sijui.charades.ui.design.SjGradients
 import com.sijui.charades.ui.design.SjPill
 import com.sijui.charades.ui.design.bounceClick
+import com.sijui.charades.ui.design.parseHexColor
 import com.sijui.charades.ui.design.sjTextFieldColors
 import com.sijui.charades.ui.design.staggerIn
 import com.sijui.charades.ui.theme.ManlineDisplayFont
@@ -91,6 +93,8 @@ fun HomeScreen(
     onOpenNani: () -> Unit,
 ) {
     val context = LocalContext.current
+    val config = LocalAppConfig.current
+    val accentColor = remember(config.accentColor) { parseHexColor(config.accentColor, Sj.Gold) }
     var serverOnline by remember { mutableStateOf<Boolean?>(null) }
     var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
     var showServerDialog by remember { mutableStateOf(false) }
@@ -140,7 +144,7 @@ fun HomeScreen(
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Habari! 👋", color = Sj.TextMid, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Tucheze leo?", color = Sj.TextHi, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(config.homeGreeting, color = Sj.TextHi, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
                 }
                 ServerStatusPill(online = serverOnline, onClick = { showServerDialog = true })
             }
@@ -152,7 +156,7 @@ fun HomeScreen(
                 Text(
                     text = "SIJUI!",
                     style = TextStyle(
-                        brush = Brush.linearGradient(listOf(Sj.Gold, Sj.Coral, Sj.Orchid)),
+                        brush = Brush.linearGradient(listOf(accentColor, Sj.Coral, Sj.Orchid)),
                         fontFamily = ManlineDisplayFont,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 84.sp,
@@ -161,7 +165,7 @@ fun HomeScreen(
                     ),
                 )
                 Text(
-                    "The ultimate Kenyan party game.",
+                    config.homeTagline,
                     color = Sj.TextMid,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -171,19 +175,39 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    ShukaStrip(
-                        modifier = Modifier
-                            .width(156.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        height = 11.dp,
-                    )
+                    if (config.showShukaStrip) {
+                        ShukaStrip(
+                            modifier = Modifier
+                                .width(156.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            height = 11.dp,
+                        )
+                    }
                     if (bestScore > 0) {
                         SjPill(
                             text = "🏆 Best: $bestScore",
-                            background = Sj.Gold.copy(alpha = 0.22f),
-                            contentColor = Sj.Gold,
+                            background = accentColor.copy(alpha = 0.22f),
+                            contentColor = accentColor,
                         )
                     }
+                }
+            }
+
+            if (config.announcementBanner.isNotBlank()) {
+                Spacer(Modifier.height(16.dp))
+                GlassCard(
+                    corner = 20.dp,
+                    padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    tint = accentColor.copy(alpha = 0.16f),
+                    borderColor = accentColor.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = config.announcementBanner,
+                        color = Sj.TextHi,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.sp,
+                    )
                 }
             }
 

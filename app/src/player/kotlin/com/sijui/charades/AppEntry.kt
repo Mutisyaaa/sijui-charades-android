@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +19,7 @@ import com.sijui.charades.data.SijuiApiClient
 import com.sijui.charades.hardware.SoundAndHaptics
 import com.sijui.charades.ui.charades.CharadesRootScreen
 import com.sijui.charades.ui.charades.CharadesViewModel
+import com.sijui.charades.ui.design.LocalAppConfig
 import com.sijui.charades.ui.home.HomeScreen
 import com.sijui.charades.ui.nani.NaniRootScreen
 import com.sijui.charades.ui.nani.NaniViewModel
@@ -38,6 +41,15 @@ fun SijuiAppEntry() {
 
     var destination by remember { mutableStateOf(PlayerDestination.HOME) }
     var soundEnabled by remember { mutableStateOf(sound.soundEnabled) }
+    var appConfig by remember { mutableStateOf(api.loadCachedAppConfig()) }
+
+    LaunchedEffect(Unit) {
+        charadesVm.setRoundSeconds(appConfig.defaultRoundSeconds)
+        runCatching { api.fetchAppConfig() }.onSuccess { live ->
+            appConfig = live
+            charadesVm.setRoundSeconds(live.defaultRoundSeconds)
+        }
+    }
 
     BackHandler(enabled = destination != PlayerDestination.HOME) {
         when (destination) {
@@ -53,44 +65,46 @@ fun SijuiAppEntry() {
         }
     }
 
-    AnimatedContent(
-        targetState = destination,
-        transitionSpec = {
-            (fadeIn(tween(240)) + scaleIn(initialScale = 0.96f, animationSpec = tween(240))) togetherWith
-                fadeOut(tween(180))
-        },
-        label = "player_nav",
-    ) { dest ->
-        when (dest) {
-            PlayerDestination.HOME -> HomeScreen(
-                api = api,
-                soundEnabled = soundEnabled,
-                onToggleSound = {
-                    soundEnabled = !soundEnabled
-                    sound.soundEnabled = soundEnabled
-                    if (soundEnabled) sound.playTick(urgent = false)
-                },
-                onOpenCharades = {
-                    charadesVm.refreshDecks()
-                    destination = PlayerDestination.CHARADES
-                },
-                onOpenNani = {
-                    naniVm.loadDecks()
-                    destination = PlayerDestination.NANI
-                },
-            )
-            PlayerDestination.CHARADES -> CharadesRootScreen(
-                viewModel = charadesVm,
-                api = api,
-                onExit = { destination = PlayerDestination.HOME },
-            )
-            PlayerDestination.NANI -> NaniRootScreen(
-                viewModel = naniVm,
-                onExit = {
-                    naniVm.leaveRoom()
-                    destination = PlayerDestination.HOME
-                },
-            )
+    CompositionLocalProvider(LocalAppConfig provides appConfig) {
+        AnimatedContent(
+            targetState = destination,
+            transitionSpec = {
+                (fadeIn(tween(240)) + scaleIn(initialScale = 0.96f, animationSpec = tween(240))) togetherWith
+                    fadeOut(tween(180))
+            },
+            label = "player_nav",
+        ) { dest ->
+            when (dest) {
+                PlayerDestination.HOME -> HomeScreen(
+                    api = api,
+                    soundEnabled = soundEnabled,
+                    onToggleSound = {
+                        soundEnabled = !soundEnabled
+                        sound.soundEnabled = soundEnabled
+                        if (soundEnabled) sound.playTick(urgent = false)
+                    },
+                    onOpenCharades = {
+                        charadesVm.refreshDecks()
+                        destination = PlayerDestination.CHARADES
+                    },
+                    onOpenNani = {
+                        naniVm.loadDecks()
+                        destination = PlayerDestination.NANI
+                    },
+                )
+                PlayerDestination.CHARADES -> CharadesRootScreen(
+                    viewModel = charadesVm,
+                    api = api,
+                    onExit = { destination = PlayerDestination.HOME },
+                )
+                PlayerDestination.NANI -> NaniRootScreen(
+                    viewModel = naniVm,
+                    onExit = {
+                        naniVm.leaveRoom()
+                        destination = PlayerDestination.HOME
+                    },
+                )
+            }
         }
     }
 }
