@@ -25,6 +25,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.longOrNull
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -32,6 +33,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -39,6 +41,7 @@ import java.util.concurrent.TimeUnit
 data class AppUpdateInfo(
     val latestVersion: String,
     val downloadUrl: String,
+    val fileSizeBytes: Long = 0L,
 )
 
 class SijuiApiClient(context: Context) {
@@ -126,10 +129,12 @@ class SijuiApiClient(context: Context) {
 
     suspend fun checkForAppUpdate(currentVersionName: String): AppUpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
+            val isStudio = appContext.packageName.contains("studio", ignoreCase = true)
+            val assetPrefix = if (isStudio) "sijui-studio" else "sijui-charades"
             val req = Request.Builder()
                 .url(GITHUB_LATEST_RELEASE_API)
                 .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "SijuiCharadesAndroid/$currentVersionName")
+                .header("User-Agent", "SijuiAndroid/$currentVersionName")
                 .get()
                 .build()
             client.newCall(req).execute().use { res ->
@@ -138,15 +143,62 @@ class SijuiApiClient(context: Context) {
                 val tag = obj["tag_name"]?.jsonPrimitive?.content?.trim().orEmpty()
                 if (tag.isBlank() || !isVersionNewer(tag, currentVersionName)) return@runCatching null
                 val assets = obj["assets"]?.jsonArray.orEmpty()
-                val apkUrl = assets.firstOrNull { el ->
+                val matchingAsset = assets.firstOrNull { el ->
                     val name = el.jsonObject["name"]?.jsonPrimitive?.content.orEmpty()
-                    name.startsWith("sijui-charades") && name.endsWith(".apk")
-                }?.jsonObject?.get("browser_download_url")?.jsonPrimitive?.content
-                    ?: obj["html_url"]?.jsonPrimitive?.content
+                    name.startsWith(assetPrefix, ignoreCase = true) && name.endsWith(".apk", ignoreCase = true)
+                }?.jsonObject ?: return@runCatching null
+                val apkUrl = matchingAsset["browser_download_url"]?.jsonPrimitive?.content
                     ?: return@runCatching null
-                AppUpdateInfo(latestVersion = tag, downloadUrl = apkUrl)
+                val sizeBytes = matchingAsset["size"]?.jsonPrimitive?.longOrNull ?: 0L
+                AppUpdateInfo(latestVersion = tag, downloadUrl = apkUrl, fileSizeBytes = sizeBytes)
             }
         }.getOrNull()
+    }
+
+    suspend fun downloadApkToFile(
+        url: String,
+        destFile: File,
+        expectedSizeBytes: Long = 0L,
+        onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
+    ) = withContext(Dispatchers.IO) {
+        val downloadClient = client.newBuilder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .build()
+        val req = Request.Builder()
+            .url(url)
+            .header("Accept", "application/octet-stream")
+            .get()
+            .build()
+        downloadClient.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) {
+                throw IOException("Download failed (HTTP ${res.code})")
+            }
+            val body = res.body ?: throw IOException("Empty download response")
+            val total = body.contentLength().takeIf { it > 0L } ?: expectedSizeBytes
+            body.byteStream().use { input ->
+                destFile.outputStream().use { output ->
+                    val buffer = ByteArray(32 * 1024)
+                    var downloaded = 0L
+                    var lastReport = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        downloaded += read
+                        val now = System.currentTimeMillis()
+                        if (now - lastReport >= 120L || downloaded == total) {
+                            lastReport = now
+                            onProgress(downloaded, total)
+                        }
+                    }
+                    output.flush()
+                    onProgress(downloaded, total)
+                }
+            }
+        }
     }
 
     private fun isVersionNewer(remoteTag: String, localVersion: String): Boolean {

@@ -58,7 +58,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sijui.charades.R
+import com.sijui.charades.data.AppUpdateInfo
 import com.sijui.charades.data.model.CharadesDeck
+import com.sijui.charades.update.InAppUpdateBanner
 import com.sijui.charades.hardware.ImageCodec
 import com.sijui.charades.ui.design.AuroraBackground
 import com.sijui.charades.ui.design.GhostButton
@@ -106,6 +108,14 @@ fun StudioScreen(
     // Server URL dialog
     var showServerDialog by remember { mutableStateOf(false) }
     var urlInput by remember { mutableStateOf(viewModel.api.baseUrl) }
+    var availableUpdate by remember { mutableStateOf<AppUpdateInfo?>(null) }
+
+    LaunchedEffect(Unit) {
+        val currentVersion = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "1.0.0"
+        availableUpdate = viewModel.api.checkForAppUpdate(currentVersion)
+    }
 
     val deckCoverPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -184,6 +194,11 @@ fun StudioScreen(
             Spacer(Modifier.height(10.dp))
             ShukaStrip(modifier = Modifier.width(130.dp).clip(RoundedCornerShape(3.dp)), height = 8.dp)
             Spacer(Modifier.height(14.dp))
+
+            availableUpdate?.let { update ->
+                InAppUpdateBanner(update = update, api = viewModel.api)
+                Spacer(Modifier.height(12.dp))
+            }
 
             if (!state.error.isNullOrBlank()) {
                 BannerBox(emoji = "⚠️", text = state.error!!, color = Sj.Ember)

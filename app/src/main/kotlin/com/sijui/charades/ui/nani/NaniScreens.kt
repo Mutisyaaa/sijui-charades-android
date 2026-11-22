@@ -30,6 +30,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,10 +57,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -65,6 +72,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.sijui.charades.R
 import com.sijui.charades.data.SijuiApiClient
 import com.sijui.charades.data.model.NaniCard
 import com.sijui.charades.data.model.NaniDeck
@@ -79,7 +87,10 @@ import com.sijui.charades.ui.design.ConfettiBurst
 import com.sijui.charades.ui.design.GhostButton
 import com.sijui.charades.ui.design.GlassCard
 import com.sijui.charades.ui.design.GradientButton
+import com.sijui.charades.ui.design.KenyaBeamBorder
 import com.sijui.charades.ui.design.QrCodeBox
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.sijui.charades.ui.design.ScreenHeader
 import com.sijui.charades.ui.design.SectionLabel
 import com.sijui.charades.ui.design.SegmentedToggle
@@ -105,6 +116,7 @@ fun NaniRootScreen(
     if (room == null) {
         EntryScreen(
             state = state,
+            api = viewModel.api,
             initialJoinCode = initialJoinCode,
             onBack = onExit,
             onRefreshDecks = viewModel::loadDecks,
@@ -162,6 +174,7 @@ fun NaniRootScreen(
 @Composable
 private fun EntryScreen(
     state: NaniUiState,
+    api: SijuiApiClient,
     initialJoinCode: String? = null,
     onBack: () -> Unit,
     onRefreshDecks: () -> Unit,
@@ -207,6 +220,7 @@ private fun EntryScreen(
                 if (t == 0) {
                     HostPane(
                         state = state,
+                        api = api,
                         playerName = playerName,
                         onNameChange = { playerName = it },
                         onRefreshDecks = onRefreshDecks,
@@ -231,6 +245,7 @@ private fun EntryScreen(
 @Composable
 private fun HostPane(
     state: NaniUiState,
+    api: SijuiApiClient,
     playerName: String,
     onNameChange: (String) -> Unit,
     onRefreshDecks: () -> Unit,
@@ -248,26 +263,28 @@ private fun HostPane(
             shape = RoundedCornerShape(18.dp),
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionLabel("Photo pack", modifier = Modifier.weight(1f))
             SjPill("↻ Refresh", onClick = onRefreshDecks)
         }
         Spacer(Modifier.height(10.dp))
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 14.dp),
         ) {
             if (state.isLoading && state.decks.isEmpty()) {
-                item {
+                item(span = { GridItemSpan(2) }) {
                     Box(Modifier.fillMaxWidth().padding(30.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Sj.Orchid)
                     }
                 }
             }
             if (state.decks.isEmpty() && !state.isLoading) {
-                item {
+                item(span = { GridItemSpan(2) }) {
                     GlassCard {
                         Text("📭  No photo packs yet", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                         Spacer(Modifier.height(4.dp))
@@ -275,8 +292,14 @@ private fun HostPane(
                     }
                 }
             }
-            items(state.decks, key = { it.id }) { deck ->
-                PackRow(deck = deck, selected = deck.id == state.selectedDeckId, onClick = { onSelectDeck(deck.id) })
+            itemsIndexed(state.decks, key = { _, deck -> deck.id }) { index, deck ->
+                NaniPackCard(
+                    deck = deck,
+                    index = index,
+                    api = api,
+                    selected = deck.id == state.selectedDeckId,
+                    onClick = { onSelectDeck(deck.id) },
+                )
             }
         }
         GradientButton(
@@ -292,43 +315,164 @@ private fun HostPane(
     }
 }
 
+private val NaniPackGradients = listOf(
+    listOf(Color(0xFF7B2FF7), Color(0xFFF107A3)),
+    listOf(Color(0xFFFF6B35), Color(0xFFC1272D)),
+    listOf(Color(0xFF00B4DB), Color(0xFF0083B0)),
+    listOf(Color(0xFF11998E), Color(0xFF38EF7D)),
+    listOf(Color(0xFFF7971E), Color(0xFFFFD200)),
+    listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0)),
+)
+
 @Composable
-private fun PackRow(deck: NaniDeck, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(22.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .bounceClick(onClick = onClick)
-            .clip(shape)
-            .background(
-                if (selected) Brush.linearGradient(SjGradients.Violet.map { it.copy(alpha = 0.35f) })
-                else Brush.linearGradient(listOf(Sj.Glass, Sj.Glass)),
-            )
-            .border(if (selected) 2.dp else 1.dp, if (selected) Sj.Orchid else Sj.GlassBorder, shape)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(if (selected) Brush.linearGradient(SjGradients.Violet) else Brush.linearGradient(listOf(Sj.GlassStrong, Sj.GlassStrong))),
-            contentAlignment = Alignment.Center,
-        ) { Text(deck.icon, fontSize = 24.sp) }
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(deck.name, color = Sj.TextHi, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${deck.count} photos", color = Sj.TextLo, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+private fun NaniPackCard(
+    deck: NaniDeck,
+    index: Int,
+    api: SijuiApiClient,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val corner = 22.dp
+    val shape = RoundedCornerShape(corner)
+    val palette = NaniPackGradients[index % NaniPackGradients.size]
+    val rawCover = deck.coverUrl
+    val isDataUrl = rawCover?.startsWith("data:", ignoreCase = true) == true
+    val decodedBitmap by produceState<ImageBitmap?>(initialValue = null, key1 = rawCover) {
+        value = if (isDataUrl && rawCover != null) {
+            withContext(Dispatchers.Default) {
+                ImageCodec.decodeDataUrl(rawCover)?.asImageBitmap()
+            }
+        } else {
+            null
         }
+    }
+    val cleanTitle = remember(deck.name) {
+        deck.name.replace("🎲", "").trim()
+    }
+    val longestWord = remember(cleanTitle) {
+        cleanTitle.split(" ").maxOfOrNull { it.length } ?: 0
+    }
+    val titleSize = when {
+        longestWord >= 12 -> 17.sp
+        longestWord >= 10 -> 19.sp
+        else -> 21.sp
+    }
+
+    val cardBody: @Composable () -> Unit = {
         Box(
             modifier = Modifier
-                .size(26.dp)
-                .clip(CircleShape)
-                .background(if (selected) Sj.Orchid else Color.Transparent)
-                .border(2.dp, if (selected) Sj.Orchid else Sj.GlassBorder, CircleShape),
-            contentAlignment = Alignment.Center,
+                .fillMaxSize()
+                .background(Brush.linearGradient(palette)),
         ) {
-            if (selected) Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
+            // Cover photo layer (no camera emoji!)
+            when {
+                decodedBitmap != null -> {
+                    Image(
+                        bitmap = decodedBitmap!!,
+                        contentDescription = cleanTitle,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                !rawCover.isNullOrBlank() && !isDataUrl -> {
+                    AsyncImage(
+                        model = api.proxyImageUrl(rawCover),
+                        contentDescription = cleanTitle,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                deck.id == "all" -> {
+                    Image(
+                        painter = painterResource(R.drawable.everything_deck),
+                        contentDescription = cleanTitle,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            // Bottom scrim for crisp white typography
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black.copy(alpha = 0.08f),
+                                0.45f to Color.Black.copy(alpha = 0.25f),
+                                1.0f to Color.Black.copy(alpha = 0.84f),
+                            ),
+                        ),
+                    ),
+            )
+
+            // Selected checkmark badge in top-right
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Sj.Orchid)
+                        .border(2.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("✓", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                }
+            }
+
+            // Bottom-aligned pack name + photo count
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = cleanTitle,
+                    color = Color.White,
+                    fontFamily = ManlineDisplayFont,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = titleSize,
+                    lineHeight = (titleSize.value + 2f).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "${deck.count} photo${if (deck.count == 1) "" else "s"}",
+                    color = Color.White.copy(alpha = 0.82f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+
+    if (selected) {
+        KenyaBeamBorder(
+            cornerRadius = corner,
+            borderWidth = 3.dp,
+            phaseOffset = (index * 0.17f) % 1f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(176.dp)
+                .bounceClick(onClick = onClick),
+        ) {
+            cardBody()
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(176.dp)
+                .bounceClick(onClick = onClick)
+                .clip(shape)
+                .border(1.2.dp, Sj.GlassBorder, shape),
+        ) {
+            cardBody()
         }
     }
 }

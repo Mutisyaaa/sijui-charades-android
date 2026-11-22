@@ -46,7 +46,28 @@ class NaniViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { api.fetchNaniDecks() }
-                .onSuccess { decks ->
+                .onSuccess { rawDecks ->
+                    val customChars = runCatching { api.fetchCustomNaniCharacters() }.getOrDefault(emptyList())
+                    val coverByCategory = customChars
+                        .filter { !it.resolvedImage.isNullOrBlank() }
+                        .groupBy { it.category.trim().lowercase() }
+                        .mapValues { (_, list) -> list.first().resolvedImage }
+
+                    val decks = rawDecks.map { deck ->
+                        if (!deck.coverUrl.isNullOrBlank()) {
+                            deck
+                        } else {
+                            val keyName = (deck.categoryName ?: deck.name).trim().lowercase()
+                            val slugKey = deck.id.removePrefix("custom_").replace("-", " ").trim().lowercase()
+                            val matchedCover = coverByCategory[keyName]
+                                ?: coverByCategory[slugKey]
+                                ?: coverByCategory.entries.firstOrNull { (cat, _) ->
+                                    cat.contains(keyName) || keyName.contains(cat)
+                                }?.value
+                            if (!matchedCover.isNullOrBlank()) deck.copy(coverUrl = matchedCover) else deck
+                        }
+                    }
+
                     _uiState.update { state ->
                         val nextSelected = if (decks.any { it.id == state.selectedDeckId }) {
                             state.selectedDeckId

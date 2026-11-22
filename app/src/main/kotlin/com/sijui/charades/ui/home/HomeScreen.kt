@@ -1,7 +1,5 @@
 package com.sijui.charades.ui.home
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -67,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.sijui.charades.R
 import com.sijui.charades.data.AppUpdateInfo
 import com.sijui.charades.data.SijuiApiClient
+import com.sijui.charades.update.InAppUpdateBanner
 import com.sijui.charades.ui.design.AuroraBackground
 import com.sijui.charades.ui.design.FloatingEmoji
 import com.sijui.charades.ui.design.GlassCard
@@ -213,38 +212,7 @@ fun HomeScreen(
 
             availableUpdate?.let { update ->
                 Spacer(Modifier.height(18.dp))
-                GlassCard(
-                    corner = 20.dp,
-                    padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    tint = Sj.Savanna.copy(alpha = 0.18f),
-                    borderColor = Sj.Savanna.copy(alpha = 0.55f),
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
-                        context.startActivity(intent)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "✨ Update ${update.latestVersion} available",
-                                color = Sj.TextHi,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 15.sp,
-                            )
-                            Text(
-                                "Tap to download the latest Sijui APK",
-                                color = Sj.TextMid,
-                                fontSize = 12.sp,
-                            )
-                        }
-                        SjPill("Update", background = Sj.Savanna, contentColor = Sj.Night)
-                    }
-                }
+                InAppUpdateBanner(update = update, api = api)
             }
 
             Spacer(Modifier.height(30.dp))

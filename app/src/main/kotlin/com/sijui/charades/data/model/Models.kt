@@ -33,6 +33,7 @@ data class NaniDeck(
     val icon: String = "📸",
     val count: Int = 0,
     val categoryName: String? = null,
+    @SerialName("cover_url") val coverUrl: String? = null,
 )
 
 @Serializable
